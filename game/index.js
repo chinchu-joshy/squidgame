@@ -3,6 +3,8 @@ import { FBXLoader } from "./js/fbxloader.js";
 let scene, camera, renderer;
 const start_position = 6;
 const end_position = -start_position;
+const text = document.querySelector(".text");
+const timeLimit = 0;
 /* ---------------------------- creating a scene ---------------------------- */
 scene = new THREE.Scene();
 
@@ -47,7 +49,9 @@ const texture = new THREE.TextureLoader().load(
 const fbxLoader = new FBXLoader();
 
 /* -------------------------- doll class for methods ------------------------- */
-
+function Delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 class Doll {
   constructor() {
     fbxLoader.load("src/squidGame_Doll.fbx", (object) => {
@@ -63,44 +67,49 @@ class Doll {
     });
   }
   lookBack() {
-    // this.doll.rotation.y=-3.15
     gsap.to(this.doll.rotation, { y: -3.15, duration: 1 });
   }
   lookForward() {
     gsap.to(this.doll.rotation, { y: 0, duration: 1 });
   }
+  async start() {
+    this.lookBack();
+    await Delay(Math.random() * 1000 + 1000);
+    this.lookForward();
+    await Delay(Math.random() * 1000 + 3000);
+    this.start();
+  }
 }
 
 let doll = new Doll();
-setTimeout(() => {
-  doll.lookBack();
-}, 1000);
+
 /* ---------------------------- class for player ---------------------------- */
 class Player {
   constructor() {
-    const geometry = new THREE.SphereGeometry( .5, 32, 16 );
-const material = new THREE.MeshBasicMaterial( { color: 0xffffff } );
-const sphere = new THREE.Mesh( geometry, material );
-sphere.position.x=start_position
-sphere.position.z=2
-scene.add( sphere );
-this.player=sphere
-this.playerInfo={
-  positionX:start_position,
-  velocity:0
+    const geometry = new THREE.SphereGeometry(0.5, 32, 16);
+    const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const sphere = new THREE.Mesh(geometry, material);
+    sphere.position.x = start_position;
+    sphere.position.z = 2;
+    scene.add(sphere);
+    this.player = sphere;
+    this.playerInfo = {
+      positionX: start_position,
+      velocity: 0,
+    };
+  }
+  run() {
+    this.playerInfo.velocity = 0.03;
+  }
+  stop() {
+    gsap.to(this.playerInfo, { velocity: 0, duration: 0.1 });
+  }
+  update() {
+    this.playerInfo.positionX -= this.playerInfo.velocity;
+    this.player.position.x = this.playerInfo.positionX;
+  }
 }
-  }
-  run(){
-this.playerInfo.velocity=.03
-  }
-  update(){
-    this.playerInfo.positionX-=this.playerInfo.velocity
-    this.player.position.x=this.playerInfo.positionX
-    
-
-  }
-}
-let player=new Player()
+let player = new Player();
 /* ---------------------------- create the track ---------------------------- */
 function createTrack() {
   createCubes({ w: 0.2, h: 1.9, d: 1 }, start_position, -0.15);
@@ -113,11 +122,29 @@ function createTrack() {
   ).position.z = -1;
 }
 createTrack();
+/* -------------------------- implement game logic -------------------------- */
+async function init() {
+  await Delay(500);
+  text.innerText = "Starting in 3";
+  await Delay(1000);
+  text.innerText = "Starting in 2";
+  await Delay(1000);
+  text.innerText = "Starting in 1";
+  await Delay(1000);
+  text.innerText = "Goo!";
+  startGame();
+}
+function startGame() {
+  let progressBar = createCubes({ w: 12, h: 0.1, d: 1 }, 0);
+  progressBar.position.y = 3.35;
+  doll.start();
+}
+init();
 /* ---------------------------- animate function ---------------------------- */
 
 function animate() {
   requestAnimationFrame(animate);
-player.update()
+  player.update();
   renderer.render(scene, camera);
   if (resizeRendererToDisplaySize(renderer)) {
     const canvas = renderer.domElement;
@@ -140,12 +167,13 @@ function resizeRendererToDisplaySize(renderer) {
 }
 
 animate();
-window.addEventListener('keyup',(e)=>{
-  alert("pressed the key up")
-  console.log(e)
-  
-})
-window.addEventListener('keydown',(e)=>{
-  alert("pressed key down")
-})
-window.addEventListener()
+window.addEventListener("keyup", (e) => {
+  if (e.key == "ArrowUp") {
+    player.run();
+  }
+});
+window.addEventListener("keydown", (e) => {
+  if (e.key == "ArrowDown") {
+    player.stop();
+  }
+});
